@@ -1,0 +1,15 @@
+extends layout
+
+//- override
+block content 
+  h1= title
+  if book_list.length
+    ul
+      each book in book_list
+        li
+          //- link to book detail record via _id field
+          a(href=book.url) !{book.title}
+          |  (#{book.author.name})
+
+  else
+    p There are no books.
