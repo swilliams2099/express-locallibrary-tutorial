@@ -8,13 +8,17 @@ const indexRouter = require('./routes/index');
 const usersRouter = require('./routes/users');
 const catalogRouter = require('./routes/catalog'); //Import routes for "catalog" area of site
 
+const compression = require("compression");
+const helmet = require("helmet");
+
+// Create Express application object
 const app = express();
 
 // Set up mongoose connection
 const mongoose = require("mongoose");
 mongoose.set("strictQuery", false);
-// NOT SAFE -- DEV ONLY
-const mongoDB = "mongodb+srv://swilliams2099:bJ9ubCCdT95q1piz@cluster0.w7re3lj.mongodb.net/local_library?retryWrites=true&w=majority&appName=Cluster0";
+
+const mongoDB = process.env.MONGODB_URI;
 
 main().catch((err) => console.log(err));
 async function main() {
@@ -25,12 +29,30 @@ async function main() {
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'pug');
 
-// middleware setup
+// Set up rate limiter: max twenty requests per minute
+const RateLimit = require("express-rate-limit");
+const { applyTimestamps } = require('./models/book');
+const limiter = RateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 20,
+});
+// Apply rate limiter to all requests
+app.use(limiter);
+
+// TODO: middleware setup
 app.use(logger('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
+app.use(compression()); // Compress all routes
 app.use(express.static(path.join(__dirname, 'public')));
+app.use(
+  helmet.contentSecurityPolicy({
+    directives: {
+      "script-src": ["'self'", "code.jquery.com", "cdn.jsdelivr.net"],
+    }, // Exceptions for bootstrap and jQuery scripts
+  }),
+);
 
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
